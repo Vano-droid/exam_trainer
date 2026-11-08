@@ -1,7 +1,7 @@
 <!doctype html>
 <html lang="ru"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Тренажёр PHP: Конференции</title>
+<title>Тренажёр PHP: Конференции (минимум)</title>
 <style>
 :root{--bg:#f6f7f9;--fg:#1c2230;--card:#fff;--bd:#d3d8e2;--mut:#667085;--ok:#176b34;--okb:#e0f4e6;--bad:#a8231b;--badb:#fde7e5;--cur:#7a5400;--curb:#fff3d1;--ac:#2f5bea;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
 @media(prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#12151c;--fg:#e6e9f0;--card:#1b2029;--bd:#2f3745;--mut:#9aa4b5;--ok:#7be0a0;--okb:#14301f;--bad:#ff9b94;--badb:#3a1a18;--cur:#ffd36e;--curb:#3a2f10;--ac:#7c9bff}}
@@ -24,322 +24,388 @@ button.on{background:var(--ac);border-color:var(--ac);color:#fff}
 .l small{color:var(--bad);margin-left:12px}
 textarea{width:100%;height:70vh;box-sizing:border-box;border:0;outline:0;resize:vertical;background:transparent;color:var(--fg);font:13px/1.5 ui-monospace,Consolas,monospace;tab-size:4;white-space:pre;overflow:auto}
 .stat{margin-top:10px;color:var(--mut)}.stat b{color:var(--fg)}.done{color:var(--ok);font-weight:700}
+.vars{margin:8px 0 0;color:var(--mut);font-size:13px}
 </style></head><body><main>
-<h1>Тренажёр: PHP-код проекта «Конференции»</h1>
-<p class="sub">Печатайте код руками. Отступы и пустые строки не учитываются, всё остальное — символ в символ. Вставка запрещена.</p>
+<h1>Тренажёр: PHP-минимум «Конференции»</h1>
+<p class="sub">Только строки, которые спрашивают на экзамене: подключение, сессия, регистрация, вход, CRUD, вывод в HTML, JSON. Отступы и пустые строки не учитываются, остальное — символ в символ. Вставка запрещена.</p>
+
 <div class="bar" id="tasks"></div>
+
 <div class="bar">
- <div class="grp" id="gm"><button data-k="pdo">PDO</button><button data-k="mysqli">mysqli</button></div>
- <div class="grp" id="gmode"><button data-k="copy">Переписывание</button><button data-k="mem">По памяти</button></div>
- <select id="gv"><option value="0">Данные как в КИМ</option><option value="1">Другие данные №1</option><option value="2">Другие данные №2</option></select>
- <button id="hint">Подсказка</button><button id="chk">Проверить</button><button id="rst">Сначала</button>
+  <div class="grp" id="gm"><button data-k="pdo">PDO</button><button data-k="mysqli">mysqli</button></div>
+  <div class="grp" id="gmode"><button data-k="copy">Переписывание</button><button data-k="mem">По памяти</button></div>
+  <select id="gv">
+    <option value="0">Данные как в КИМ</option>
+    <option value="1">Другие данные №1</option>
+    <option value="2">Другие данные №2</option>
+  </select>
+  <button id="hint">Подсказка</button><button id="chk">Проверить</button><button id="rst">Сначала</button>
 </div>
+
 <div class="cols">
- <div class="box"><h2>Эталон</h2><div class="code" id="ref"></div></div>
- <div class="box"><h2>Ваш код</h2><textarea id="ta" spellcheck="false" autocapitalize="off" autocomplete="off" placeholder="Начните печатать…"></textarea></div>
+  <div class="box"><h2>Эталон</h2><div class="code" id="ref"></div></div>
+  <div class="box"><h2>Ваш код</h2><textarea id="ta" spellcheck="false" autocapitalize="off" autocomplete="off" placeholder="Начните печатать…"></textarea></div>
 </div>
 <div class="stat" id="stat"></div>
+<p class="vars" id="vars"></p>
 </main>
 <script>
-const $=s=>document.querySelector(s),esc=s=>s.replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));
-const VAR=[{T:'requests',R:'room',D:'start_at',P:'payment',S:'status',V:'review',X:'Завершено'},
-{T:'bookings',R:'hall',D:'event_at',P:'pay_type',S:'state',V:'comment',X:'Выполнено'},
-{T:'applications',R:'place',D:'begin_at',P:'pay_way',S:'phase',V:'feedback',X:'Закрыта'}];
-const q=s=>s.includes("'")?`"${s}"`:`'${s}'`;
-const PR=(m,sql,v,ty)=>m=='pdo'?`$stmt = $pdo->prepare(${q(sql)});\n$stmt->execute([${v}]);`:`$stmt = $db->prepare(${q(sql)});\n$stmt->bind_param('${ty}', ${v});\n$stmt->execute();`;
-const ONE=m=>m=='pdo'?'$stmt->fetch()':'$stmt->get_result()->fetch_assoc()';
-const ALL=m=>m=='pdo'?'$stmt->fetchAll()':'$stmt->get_result()->fetch_all(MYSQLI_ASSOC)';
-const U="$_SESSION['user']['id']";
-const tasks=[
-{n:'Database + db.php',f:m=>m=='pdo'?String.raw`<?php
-class Database
+const $ = s => document.querySelector(s);
+const esc = s => String(s).replace(/[&<>]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));
+
+// варианты данных: таблица, помещение, дата, оплата, статус, отзыв, финальный статус
+const VAR = [
+  {T:'requests',    R:'room',  D:'start_at', P:'payment', S:'status', V:'review',   X:'Завершено'},
+  {T:'bookings',    R:'hall',  D:'event_at', P:'pay_type',S:'state',  V:'comment',  X:'Выполнено'},
+  {T:'applications',R:'place', D:'begin_at', P:'pay_way', S:'phase',  V:'feedback', X:'Закрыта'}
+];
+
+const tasks = [
 {
-public static function connect(string $name): PDO
+  n: 'db.php',
+  pdo: String.raw`$pdo = new PDO('mysql:host=localhost;dbname=conference;charset=utf8mb4', 'root', '');
+$pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+$pdo->setAttribute(PDO::ATTR_DEFAULT_FETCH_MODE, PDO::FETCH_ASSOC);`,
+  mysqli: String.raw`$db = new mysqli('localhost', 'root', '', 'conference');
+$db->set_charset('utf8mb4');`
+},
 {
-$config = require __DIR__ . '/../config.php';
-return new PDO("mysql:host={$config['host']};port={$config['port']};dbname=$name;charset=utf8mb4", $config['user'], $config['password'], [
-PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
-PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
-]);
-}
-}
-// db.php
-require_once __DIR__ . '/includes/Database.php';
-$config = require __DIR__ . '/config.php';
-try {
-$pdo = Database::connect($config['database']);
-} catch (PDOException $error) {
-http_response_code(500);
-exit('Нет подключения к БД');
-}`:String.raw`<?php
-class Database
+  n: 'init.php',
+  pdo: String.raw`session_start();
+$statuses = ['Новая', 'Назначено', '@X@'];
+$payments = ['Наличными', 'Переводом'];
+function e($v) { return htmlspecialchars((string) $v, ENT_QUOTES, 'UTF-8'); }
+function redirect($url) { header('Location: ' . $url); exit; }
+function require_login() { if (empty($_SESSION['user'])) redirect('login.php'); }
+function require_admin() { require_login(); if ($_SESSION['user']['role'] !== 'admin') exit('Доступ запрещён'); }`,
+  mysqli: String.raw`session_start();
+$statuses = ['Новая', 'Назначено', '@X@'];
+$payments = ['Наличными', 'Переводом'];
+function e($v) { return htmlspecialchars((string) $v, ENT_QUOTES, 'UTF-8'); }
+function redirect($url) { header('Location: ' . $url); exit; }
+function require_login() { if (empty($_SESSION['user'])) redirect('login.php'); }
+function require_admin() { require_login(); if ($_SESSION['user']['role'] !== 'admin') exit('Доступ запрещён'); }`
+},
 {
-public static function connect(string $name): mysqli
-{
-$config = require __DIR__ . '/../config.php';
-mysqli_report(MYSQLI_REPORT_ERROR | MYSQLI_REPORT_STRICT);
-$db = new mysqli($config['host'], $config['user'], $config['password'], $name, (int) $config['port']);
-$db->set_charset('utf8mb4');
-return $db;
-}
-}
-// db.php
-require_once __DIR__ . '/includes/Database.php';
-$config = require __DIR__ . '/config.php';
-try {
-$db = Database::connect($config['database']);
-} catch (mysqli_sql_exception $error) {
-http_response_code(500);
-exit('Нет подключения к БД');
-}`},
-{n:'init.php',f:m=>String.raw`<?php
-session_start();
-require __DIR__ . '/../db.php';
-$statuses = ['Новая', 'Мероприятие назначено', '@X@'];
-$payments = ['При очном посещении', 'Переводом по системе СБП'];
-function e($value): string
-{
-return htmlspecialchars((string) $value, ENT_QUOTES, 'UTF-8');
-}
-function redirect(string $url): void
-{
-header('Location: ' . $url);
-exit;
-}
-function require_login(): void
-{
-if (empty($_SESSION['user'])) redirect('login.php');
-}
-function require_admin(): void
-{
-require_login();
-if ($_SESSION['user']['role'] !== 'admin') {
-http_response_code(403);
-exit('Доступ запрещён');
-}
-}
-function flash(string $message): void
-{
-$_SESSION['message'] = $message;
-}`},
-{n:'register.php',f:m=>String.raw`$errors = [];
+  n: 'register.php',
+  pdo: String.raw`$errors = [];
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-$login = trim($_POST['login'] ?? '');
-$password = $_POST['password'] ?? '';
-$fullname = trim($_POST['fullname'] ?? '');
-$phone = trim($_POST['phone'] ?? '');
-$email = trim($_POST['email'] ?? '');
-if (!preg_match('/^[a-zA-Z0-9]{6,50}$/D', $login)) $errors[] = 'Неверный логин';
-if (mb_strlen($password) < 8) $errors[] = 'Короткий пароль';
-if (!preg_match('/^[А-Яа-яЁё ]+$/uD', $fullname)) $errors[] = 'Неверное ФИО';
-if (!preg_match('/^8\([0-9]{3}\)[0-9]{3}-[0-9]{2}-[0-9]{2}$/D', $phone)) $errors[] = 'Неверный телефон';
-if (!filter_var($email, FILTER_VALIDATE_EMAIL)) $errors[] = 'Неверный e-mail';
+$login = trim($_POST['login']);
+$password = $_POST['password'];
+if (!preg_match('/^[a-zA-Z0-9]{6,}$/', $login)) $errors[] = 'Логин: 6+ латинских символов';
+if (mb_strlen($password) < 8) $errors[] = 'Пароль: от 8 символов';
 if (!$errors) {
-${PR(m,'SELECT id FROM users WHERE login = ?','$login','s')}
-if (${ONE(m)}) $errors[] = 'Логин занят';
+$stmt = $pdo->prepare('SELECT id FROM users WHERE login = ?');
+$stmt->execute([$login]);
+if ($stmt->fetch()) $errors[] = 'Логин занят';
+}
+if (!$errors) {
+$stmt = $pdo->prepare('INSERT INTO users (login, password) VALUES (?, ?)');
+$stmt->execute([$login, password_hash($password, PASSWORD_DEFAULT)]);
+redirect('login.php');
+}
+}`,
+  mysqli: String.raw`$errors = [];
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+$login = trim($_POST['login']);
+$password = $_POST['password'];
+if (!preg_match('/^[a-zA-Z0-9]{6,}$/', $login)) $errors[] = 'Логин: 6+ латинских символов';
+if (mb_strlen($password) < 8) $errors[] = 'Пароль: от 8 символов';
+if (!$errors) {
+$stmt = $db->prepare('SELECT id FROM users WHERE login = ?');
+$stmt->bind_param('s', $login);
+$stmt->execute();
+if ($stmt->get_result()->fetch_assoc()) $errors[] = 'Логин занят';
 }
 if (!$errors) {
 $hash = password_hash($password, PASSWORD_DEFAULT);
-${PR(m,'INSERT INTO users (login, password, fullname, phone, email) VALUES (?, ?, ?, ?, ?)','$login, $hash, $fullname, $phone, $email','sssss')}
-flash('Аккаунт создан');
+$stmt = $db->prepare('INSERT INTO users (login, password) VALUES (?, ?)');
+$stmt->bind_param('ss', $login, $hash);
+$stmt->execute();
 redirect('login.php');
 }
-}`},
-{n:'login.php',f:m=>String.raw`$errors = [];
+}`
+},
+{
+  n: 'login.php',
+  pdo: String.raw`$errors = [];
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-$login = trim($_POST['login'] ?? '');
-$password = $_POST['password'] ?? '';
-${PR(m,'SELECT * FROM users WHERE login = ?','$login','s')}
-$user = ${ONE(m)};
+$login = trim($_POST['login']);
+$password = $_POST['password'];
+$stmt = $pdo->prepare('SELECT * FROM users WHERE login = ?');
+$stmt->execute([$login]);
+$user = $stmt->fetch();
 if ($user && password_verify($password, $user['password'])) {
-session_regenerate_id(true);
-$_SESSION['user'] = ['id' => $user['id'], 'fullname' => $user['fullname'], 'role' => $user['role']];
-redirect($user['role'] === 'admin' ? 'admin.php' : 'requests.php');
+$_SESSION['user'] = $user;
+redirect('requests.php');
 }
 $errors[] = 'Неверный логин или пароль';
-}`},
-{n:'request.php (создать/изменить)',f:m=>String.raw`require_login();
+}`,
+  mysqli: String.raw`$errors = [];
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+$login = trim($_POST['login']);
+$password = $_POST['password'];
+$stmt = $db->prepare('SELECT * FROM users WHERE login = ?');
+$stmt->bind_param('s', $login);
+$stmt->execute();
+$user = $stmt->get_result()->fetch_assoc();
+if ($user && password_verify($password, $user['password'])) {
+$_SESSION['user'] = $user;
+redirect('requests.php');
+}
+$errors[] = 'Неверный логин или пароль';
+}`
+},
+{
+  n: 'request.php (сохранить)',
+  pdo: String.raw`require_login();
+$uid = $_SESSION['user']['id'];
 $id = (int) ($_GET['id'] ?? 0);
-$errors = [];
-if ($id) {
-${PR(m,'SELECT * FROM @T@ WHERE id = ? AND user_id = ?',`$id, ${U}`,'ii')}
-$request = ${ONE(m)};
-if (!$request) {
-http_response_code(404);
-exit('Заявка не найдена');
-}
-}
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-$room = trim($_POST['room'] ?? '');
-$date = trim($_POST['date'] ?? '');
-$payment = $_POST['payment'] ?? '';
-if ($room === '' || mb_strlen($room) > 150) $errors[] = 'Укажите помещение';
-$parsed = DateTime::createFromFormat('!Y-m-d\TH:i', $date);
-if (!$parsed) $errors[] = 'Неверная дата';
-if (!in_array($payment, $payments, true)) $errors[] = 'Выберите оплату';
+$room = trim($_POST['room']);
+$date = $_POST['date'];
+$payment = $_POST['payment'];
+if ($id) {
+$stmt = $pdo->prepare('UPDATE @T@ SET @R@ = ?, @D@ = ?, @P@ = ? WHERE id = ? AND user_id = ?');
+$stmt->execute([$room, $date, $payment, $id, $uid]);
+} else {
+$stmt = $pdo->prepare('INSERT INTO @T@ (user_id, @R@, @D@, @P@) VALUES (?, ?, ?, ?)');
+$stmt->execute([$uid, $room, $date, $payment]);
+}
+redirect('requests.php');
+}`,
+  mysqli: String.raw`require_login();
+$uid = $_SESSION['user']['id'];
+$id = (int) ($_GET['id'] ?? 0);
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+$room = trim($_POST['room']);
+$date = $_POST['date'];
+$payment = $_POST['payment'];
+if ($id) {
+$stmt = $db->prepare('UPDATE @T@ SET @R@ = ?, @D@ = ?, @P@ = ? WHERE id = ? AND user_id = ?');
+$stmt->bind_param('sssii', $room, $date, $payment, $id, $uid);
+$stmt->execute();
+} else {
+$stmt = $db->prepare('INSERT INTO @T@ (user_id, @R@, @D@, @P@) VALUES (?, ?, ?, ?)');
+$stmt->bind_param('isss', $uid, $room, $date, $payment);
+$stmt->execute();
+}
+redirect('requests.php');
+}`
+},
+{
+  n: 'requests.php (список)',
+  pdo: String.raw`require_login();
+$uid = $_SESSION['user']['id'];
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+$id = (int) $_POST['id'];
+$stmt = $pdo->prepare('DELETE FROM @T@ WHERE id = ? AND user_id = ?');
+$stmt->execute([$id, $uid]);
+redirect('requests.php');
+}
+$stmt = $pdo->prepare('SELECT * FROM @T@ WHERE user_id = ? ORDER BY id DESC');
+$stmt->execute([$uid]);
+$requests = $stmt->fetchAll();`,
+  mysqli: String.raw`require_login();
+$uid = $_SESSION['user']['id'];
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+$id = (int) $_POST['id'];
+$stmt = $db->prepare('DELETE FROM @T@ WHERE id = ? AND user_id = ?');
+$stmt->bind_param('ii', $id, $uid);
+$stmt->execute();
+redirect('requests.php');
+}
+$stmt = $db->prepare('SELECT * FROM @T@ WHERE user_id = ? ORDER BY id DESC');
+$stmt->bind_param('i', $uid);
+$stmt->execute();
+$requests = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);`
+},
+{
+  n: 'review.php (отзыв)',
+  pdo: String.raw`require_login();
+$uid = $_SESSION['user']['id'];
+$id = (int) $_POST['id'];
+$review = trim($_POST['review']);
+$errors = [];
+if ($review === '') $errors[] = 'Напишите отзыв';
 if (!$errors) {
-$sqlDate = $parsed->format('Y-m-d H:i:s');
-if ($id) {
-${PR(m,'UPDATE @T@ SET @R@ = ?, @D@ = ?, @P@ = ? WHERE id = ? AND user_id = ?',`$room, $sqlDate, $payment, $id, ${U}`,'sssii')}
-} else {
-${PR(m,'INSERT INTO @T@ (user_id, @R@, @D@, @P@) VALUES (?, ?, ?, ?)',`${U}, $room, $sqlDate, $payment`,'isss')}
-}
-flash('Сохранено');
-redirect('requests.php');
-}
-}`},
-{n:'requests.php (список/удаление/отзыв)',f:m=>String.raw`require_login();
+$stmt = $pdo->prepare('UPDATE @T@ SET @V@ = ? WHERE id = ? AND user_id = ?');
+$stmt->execute([$review, $id, $uid]);
+}`,
+  mysqli: String.raw`require_login();
+$uid = $_SESSION['user']['id'];
+$id = (int) $_POST['id'];
+$review = trim($_POST['review']);
 $errors = [];
+if ($review === '') $errors[] = 'Напишите отзыв';
+if (!$errors) {
+$stmt = $db->prepare('UPDATE @T@ SET @V@ = ? WHERE id = ? AND user_id = ?');
+$stmt->bind_param('sii', $review, $id, $uid);
+$stmt->execute();
+}`
+},
+{
+  n: 'admin.php',
+  pdo: String.raw`require_admin();
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-$id = (int) ($_POST['id'] ?? 0);
-$action = $_POST['action'] ?? '';
-if ($action === 'delete') {
-${PR(m,'DELETE FROM @T@ WHERE id = ? AND user_id = ?',`$id, ${U}`,'ii')}
-flash('Заявка удалена');
-redirect('requests.php');
-}
-if ($action === 'review') {
-$review = trim($_POST['review'] ?? '');
-if ($review === '' || mb_strlen($review) > 2000) {
-$errors[] = 'Неверный отзыв';
-} else {
-${PR(m,"UPDATE @T@ SET @V@ = ? WHERE id = ? AND user_id = ? AND @S@ = '@X@'",`$review, $id, ${U}`,'sii')}
-flash('Отзыв сохранён');
-redirect('requests.php');
-}
-}
-}
-${PR(m,'SELECT * FROM @T@ WHERE user_id = ? ORDER BY id DESC',U,'i')}
-$requests = ${ALL(m)};`},
-{n:'admin.php (статус/фильтр)',f:m=>String.raw`require_admin();
-$errors = [];
-if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-$status = $_POST['status'] ?? '';
-$id = (int) ($_POST['id'] ?? 0);
-if (!in_array($status, $statuses, true)) {
-$errors[] = 'Недопустимый статус';
-} else {
-${PR(m,'UPDATE @T@ SET @S@ = ? WHERE id = ?','$status, $id','si')}
-flash('Статус обновлён');
+$status = $_POST['status'];
+$id = (int) $_POST['id'];
+$stmt = $pdo->prepare('UPDATE @T@ SET @S@ = ? WHERE id = ?');
+$stmt->execute([$status, $id]);
 redirect('admin.php');
 }
+$sql = 'SELECT @T@.*, users.fullname FROM @T@ JOIN users ON users.id = @T@.user_id ORDER BY @T@.id DESC';
+$stmt = $pdo->query($sql);
+$requests = $stmt->fetchAll();`,
+  mysqli: String.raw`require_admin();
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+$status = $_POST['status'];
+$id = (int) $_POST['id'];
+$stmt = $db->prepare('UPDATE @T@ SET @S@ = ? WHERE id = ?');
+$stmt->bind_param('si', $status, $id);
+$stmt->execute();
+redirect('admin.php');
 }
-$filter = $_GET['status'] ?? '';
-$sql = 'SELECT @T@.*, users.fullname, users.phone, users.email FROM @T@ JOIN users ON users.id = @T@.user_id';
-$params = [];
-if (in_array($filter, $statuses, true)) {
-$sql .= ' WHERE @T@.@S@ = ?';
-$params[] = $filter;
-}
-$sql .= ' ORDER BY @T@.id DESC';
-${m=='pdo'?`$stmt = $pdo->prepare($sql);
-$stmt->execute($params);`:`$stmt = $db->prepare($sql);
-if ($params) $stmt->bind_param('s', ...$params);
-$stmt->execute();`}
-$requests = ${ALL(m)};`},
-{n:'API: GET /orders',f:m=>String.raw`header('Content-Type: application/json; charset=utf-8');
-require_once __DIR__ . '/../conference/includes/Database.php';
-function respond($data, int $status = 200): void
+$sql = 'SELECT @T@.*, users.fullname FROM @T@ JOIN users ON users.id = @T@.user_id ORDER BY @T@.id DESC';
+$requests = $db->query($sql)->fetch_all(MYSQLI_ASSOC);`
+},
 {
-http_response_code($status);
-echo json_encode($data, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
-exit;
+  n: 'вывод в HTML',
+  pdo: String.raw`<?php foreach ($requests as $row): ?>
+<tr>
+<td><?= e($row['id']) ?></td>
+<td><?= e($row['@R@']) ?></td>
+<td><?= e($row['@D@']) ?></td>
+<td><?= e($row['@S@']) ?></td>
+</tr>
+<?php endforeach; ?>`,
+  mysqli: String.raw`<?php foreach ($requests as $row): ?>
+<tr>
+<td><?= e($row['id']) ?></td>
+<td><?= e($row['@R@']) ?></td>
+<td><?= e($row['@D@']) ?></td>
+<td><?= e($row['@S@']) ?></td>
+</tr>
+<?php endforeach; ?>`
+},
+{
+  n: 'проверки (регулярки)',
+  pdo: String.raw`if (!preg_match('/^[a-zA-Z0-9]{6,}$/', $login)) $errors[] = 'Логин';
+if (!preg_match('/^[А-Яа-яЁё ]+$/u', $fullname)) $errors[] = 'ФИО';
+if (!preg_match('/^8\([0-9]{3}\)[0-9]{3}-[0-9]{2}-[0-9]{2}$/', $phone)) $errors[] = 'Телефон';
+if (!filter_var($email, FILTER_VALIDATE_EMAIL)) $errors[] = 'E-mail';
+if (mb_strlen($password) < 8) $errors[] = 'Пароль';`,
+  mysqli: String.raw`if (!preg_match('/^[a-zA-Z0-9]{6,}$/', $login)) $errors[] = 'Логин';
+if (!preg_match('/^[А-Яа-яЁё ]+$/u', $fullname)) $errors[] = 'ФИО';
+if (!preg_match('/^8\([0-9]{3}\)[0-9]{3}-[0-9]{2}-[0-9]{2}$/', $phone)) $errors[] = 'Телефон';
+if (!filter_var($email, FILTER_VALIDATE_EMAIL)) $errors[] = 'E-mail';
+if (mb_strlen($password) < 8) $errors[] = 'Пароль';`
+},
+{
+  n: 'JSON-ответ API',
+  pdo: String.raw`header('Content-Type: application/json; charset=utf-8');
+$stmt = $pdo->query('SELECT * FROM @T@');
+echo json_encode($stmt->fetchAll(), JSON_UNESCAPED_UNICODE);`,
+  mysqli: String.raw`header('Content-Type: application/json; charset=utf-8');
+$result = $db->query('SELECT * FROM @T@');
+echo json_encode($result->fetch_all(MYSQLI_ASSOC), JSON_UNESCAPED_UNICODE);`
 }
-$path = parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH);
-if ($path !== '/orders') respond(['error' => 'Маршрут не найден'], 404);
-if ($_SERVER['REQUEST_METHOD'] !== 'GET') {
-header('Allow: GET');
-respond(['error' => 'Метод не поддерживается'], 405);
-}
-$statusNames = ['new' => 'Новый', 'paid' => 'Оплачен', 'shipped' => 'Отправлен', 'done' => 'Завершён', 'cancelled' => 'Отменён'];
-$where = [];
-$params = [];
-if (isset($_GET['status'])) {
-if (!is_string($_GET['status']) || !array_key_exists($_GET['status'], $statusNames)) respond(['error' => 'Недопустимый status'], 400);
-$where[] = 'orders.status = ?';
-$params[] = $_GET['status'];
-}
-if (isset($_GET['user_id'])) {
-if (!is_string($_GET['user_id']) || !preg_match('/^-?[0-9]+$/D', $_GET['user_id'])) respond(['error' => 'Недопустимый user_id'], 400);
-$where[] = 'orders.user_id = ?';
-$params[] = $_GET['user_id'];
-}
-$config = require __DIR__ . '/../conference/config.php';
-${m=='pdo'?'$pdo':'$db'} = Database::connect($config['shop_database']);
-$sql = 'SELECT orders.*, users.last_name, users.first_name, users.middle_name, users.city, users.street, users.house, users.flat FROM orders JOIN users ON users.id = orders.user_id';
-if ($where) $sql .= ' WHERE ' . implode(' AND ', $where);
-$sql .= ' ORDER BY orders.id ASC';
-${m=='pdo'?`$stmt = $pdo->prepare($sql);
-$stmt->execute($params);`:`$stmt = $db->prepare($sql);
-if ($params) $stmt->bind_param(str_repeat('s', count($params)), ...$params);
-$stmt->execute();`}
-$orders = ${ALL(m)};
-$result = [];
-foreach ($orders as $order) {
-${PR(m,'SELECT products.title, products.price, order_items.quantity FROM order_items JOIN products ON products.id = order_items.product_id WHERE order_items.order_id = ?',"$order['id']",'i')}
-$items = [];
-$total = 0;
-foreach (${ALL(m)} as $item) {
-$total += $item['price'] * $item['quantity'];
-$items[] = ['title' => $item['title'], 'quantity' => (int) $item['quantity'], 'price' => number_format((float) $item['price'], 2, '.', '')];
-}
-$customer = trim($order['last_name'] . ' ' . $order['first_name'] . ' ' . ($order['middle_name'] ?? ''));
-$address = "г. {$order['city']}, ул. {$order['street']}, д. {$order['house']}";
-if (!empty($order['flat'])) $address .= ', кв. ' . $order['flat'];
-$result[] = [
-'order_id' => (int) $order['id'],
-'customer' => $customer,
-'status' => $statusNames[$order['status']],
-'created_at' => date('d.m.Y', strtotime($order['created_at'])),
-'address' => $address,
-'items_count' => count($items),
-'total' => number_format($total, 2, '.', ''),
-'items' => $items,
 ];
+
+const ta = $('#ta'), refEl = $('#ref'), statEl = $('#stat');
+const st = {t:0, m:'pdo', v:0, mode:'copy', hints:new Set(), final:false, t0:0, t1:0, ok:0, n:0};
+
+// эталон: подставить данные варианта и убрать пустые строки
+function gen(){
+  return tasks[st.t][st.m]
+    .replace(/@(\w)@/g, (_, k) => VAR[st.v][k])
+    .split('\n').map(l => l.trim()).filter(Boolean);
 }
-respond($result);`}
-];
-const st={t:0,m:'pdo',v:0,mode:'copy',hints:new Set(),final:false,t0:0,t1:0};
-const gen=()=>tasks[st.t].f(st.m).replace(/@(\w)@/g,(_,k)=>VAR[st.v][k]).split('\n').map(x=>x.trim()).filter(Boolean);
-const ind=ls=>{let d=0;return ls.map(l=>{const x=Math.max(0,d-(/^[}\]]/.test(l)?1:0));d+=(l.match(/[{\[]/g)||[]).length-(l.match(/[}\]]/g)||[]).length;return x})};
-const norm=s=>s.split('\n').map(x=>x.trim()).filter(Boolean);
-let saved={};try{saved=JSON.parse(localStorage.getItem('phptr')||'{}')}catch(e){}
-const key=()=>[st.t,st.m,st.mode].join('|');
-const ta=$('#ta');
+function typed(){
+  return ta.value.split('\n').map(l => l.trim()).filter(Boolean);
+}
+// отступы для показа (сравнение их не учитывает)
+function indents(lines){
+  let d = 0;
+  return lines.map(l => {
+    const before = Math.max(0, d - (/^[}\]]/.test(l) ? 1 : 0));
+    d += (l.match(/[{\[]/g) || []).length - (l.match(/[}\]]/g) || []).length;
+    return before;
+  });
+}
+
+let best = {};
+try { best = JSON.parse(localStorage.getItem('php-trainer') || '{}'); } catch (e) {}
+const key = () => [st.t, st.m, st.mode].join('|');
+
 function render(){
- const t=gen(),d=ind(t),u=norm(ta.value);let ok=0;
- $('#ref').innerHTML=t.map((l,i)=>{
-  let c='todo';
-  if(i<u.length){if(u[i]===l){c='ok';ok++}else if(i==u.length-1&&!st.final&&l.startsWith(u[i]))c='cur';else c='bad'}
-  const show=st.mode=='copy'||c=='ok'||st.final||st.hints.has(i);
-  let body=show?esc(' '.repeat(4*d[i])+l):'▒'.repeat(Math.min(l.length,36));
-  if(c=='bad'&&show&&st.final)body+=`<small>у вас: ${esc(u[i])}</small>`;
-  if(st.final&&i>=u.length)c='bad',body+='<small>пропущено</small>';
-  return `<div class="l ${c}"><i>${i+1}</i><span>${body}</span></div>`}).join('');
- const all=ok==t.length&&u.length==t.length;
- if(all&&!st.t1){st.t1=Date.now();const s=Math.round((st.t1-st.t0)/1000);if(!saved[key()]||s<saved[key()]){saved[key()]=s;try{localStorage.setItem('phptr',JSON.stringify(saved))}catch(e){}}tabs()}
- st.ok=ok;st.n=t.length;st.ex=u.length>t.length;stat(all);
+  const ref = gen(), pad = indents(ref), mine = typed();
+  let ok = 0;
+
+  refEl.innerHTML = ref.map((line, i) => {
+    let cls = '';
+    if (i < mine.length) {
+      if (mine[i] === line) { cls = 'ok'; ok++; }
+      else if (i === mine.length - 1 && !st.final && line.startsWith(mine[i])) cls = 'cur';
+      else cls = 'bad';
+    }
+    const shown = st.mode === 'copy' || cls === 'ok' || st.final || st.hints.has(i);
+    let text = shown ? esc('    '.repeat(pad[i]) + line) : '░'.repeat(Math.min(line.length, 36));
+    if (cls === 'bad' && st.final) text += `<small>у вас: ${esc(mine[i] || '—')}</small>`;
+    if (st.final && i >= mine.length) { cls = 'bad'; text += '<small>пропущено</small>'; }
+    return `<div class="l ${cls}"><i>${i + 1}</i><span>${text}</span></div>`;
+  }).join('');
+
+  const done = ok === ref.length && mine.length === ref.length;
+  if (done && !st.t1) {
+    st.t1 = Date.now();
+    const sec = Math.round((st.t1 - st.t0) / 1000);
+    if (!best[key()] || sec < best[key()]) {
+      best[key()] = sec;
+      try { localStorage.setItem('php-trainer', JSON.stringify(best)); } catch (e) {}
+    }
+    tabs();
+  }
+  st.ok = ok; st.n = ref.length;
+  stat(done);
 }
-function stat(all){
- const s=st.t0?Math.round(((st.t1||Date.now())-st.t0)/1000):0;
- $('#stat').innerHTML=`Строк верно: <b>${st.ok}/${st.n}</b> · подсказок: <b>${st.hints.size}</b> · время: <b>${s} с</b>`+(st.ex?' · <span style="color:var(--bad)">лишние строки</span>':'')+(all?' · <span class="done">✓ Готово! Повторите без подсказок и в режиме «По памяти».</span>':'');
+
+function stat(done){
+  const sec = st.t0 ? Math.round(((st.t1 || Date.now()) - st.t0) / 1000) : 0;
+  const extra = typed().length > st.n ? ' · <span style="color:var(--bad)">лишние строки</span>' : '';
+  const fast = best[key()] ? ` · рекорд: ${best[key()]} с` : '';
+  statEl.innerHTML = `Строк верно: <b>${st.ok}/${st.n}</b> · подсказок: <b>${st.hints.size}</b> · время: <b>${sec} с</b>${fast}${extra}`
+    + (done ? ' · <span class="done">✓ Готово. Повторите в режиме «По памяти».</span>' : '');
 }
+
 function tabs(){
- $('#tasks').innerHTML=tasks.map((x,i)=>`<button data-i="${i}" class="${i==st.t?'on':''}">${saved[[i,st.m,st.mode].join('|')]?'✓ ':''}${esc(x.n)}</button>`).join('');
- document.querySelectorAll('#gm button').forEach(b=>b.classList.toggle('on',b.dataset.k==st.m));
- document.querySelectorAll('#gmode button').forEach(b=>b.classList.toggle('on',b.dataset.k==st.mode));
+  $('#tasks').innerHTML = tasks.map((t, i) =>
+    `<button data-i="${i}" class="${i === st.t ? 'on' : ''}">${best[[i, st.m, st.mode].join('|')] ? '✓ ' : ''}${esc(t.n)}</button>`
+  ).join('');
+  document.querySelectorAll('#gm button').forEach(b => b.classList.toggle('on', b.dataset.k === st.m));
+  document.querySelectorAll('#gmode button').forEach(b => b.classList.toggle('on', b.dataset.k === st.mode));
+  $('#vars').textContent = `Вариант: ${VAR[st.v].T} · помещение — ${VAR[st.v].R} · дата — ${VAR[st.v].D} · оплата — ${VAR[st.v].P} · статус — ${VAR[st.v].S} · отзыв — ${VAR[st.v].V} · финальный — ${VAR[st.v].X}`;
 }
-function reset(){ta.value='';st.hints=new Set();st.final=false;st.t0=0;st.t1=0;tabs();render()}
-$('#tasks').onclick=e=>{const b=e.target.closest('button');if(b){st.t=+b.dataset.i;reset()}};
-$('#gm').onclick=e=>{const b=e.target.closest('button');if(b){st.m=b.dataset.k;reset()}};
-$('#gmode').onclick=e=>{const b=e.target.closest('button');if(b){st.mode=b.dataset.k;reset()}};
-$('#gv').onchange=e=>{st.v=+e.target.value;reset()};
-$('#rst').onclick=reset;
-$('#chk').onclick=()=>{st.final=true;render()};
-$('#hint').onclick=()=>{st.hints.add(norm(ta.value).length);render();ta.focus()};
-ta.oninput=()=>{if(!st.t0)st.t0=Date.now();st.final=false;render()};
-ta.onpaste=e=>e.preventDefault();
-ta.onkeydown=e=>{if(e.key=='Tab'){e.preventDefault();document.execCommand('insertText',false,'    ')}};
-setInterval(()=>{if(st.t0&&!st.t1)stat(false)},1000);
+
+function reset(){
+  ta.value = '';
+  st.hints = new Set();
+  st.final = false; st.t0 = 0; st.t1 = 0;
+  tabs(); render();
+}
+
+$('#tasks').onclick = e => { const b = e.target.closest('button'); if (b) { st.t = +b.dataset.i; reset(); } };
+$('#gm').onclick = e => { const b = e.target.closest('button'); if (b) { st.m = b.dataset.k; reset(); } };
+$('#gmode').onclick = e => { const b = e.target.closest('button'); if (b) { st.mode = b.dataset.k; reset(); } };
+$('#gv').onchange = e => { st.v = +e.target.value; reset(); };
+$('#rst').onclick = reset;
+$('#chk').onclick = () => { st.final = true; render(); };
+$('#hint').onclick = () => { st.hints.add(typed().length); render(); ta.focus(); };
+
+ta.oninput = () => { if (!st.t0) st.t0 = Date.now(); st.final = false; render(); };
+ta.onpaste = e => e.preventDefault();
+ta.onkeydown = e => { if (e.key === 'Tab') { e.preventDefault(); document.execCommand('insertText', false, '    '); } };
+setInterval(() => { if (st.t0 && !st.t1) stat(false); }, 1000);
+
 reset();
 </script></body></html>
