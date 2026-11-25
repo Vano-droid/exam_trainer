@@ -64,7 +64,6 @@ const tasks = [
 {
   n: 'db.php',
   pdo: String.raw`$pdo = new PDO('mysql:host=localhost;dbname=conference;charset=utf8mb4', 'root', '');
-$pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
 $pdo->setAttribute(PDO::ATTR_DEFAULT_FETCH_MODE, PDO::FETCH_ASSOC);`,
   mysqli: String.raw`$db = new mysqli('localhost', 'root', '', 'conference');
 $db->set_charset('utf8mb4');`
